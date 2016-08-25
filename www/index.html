@@ -1,0 +1,128 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'">
+    <script src="components/loader.js"></script>
+    <script src="lib/onsenui/js/onsenui.min.js"></script>
+
+    <link rel="stylesheet" href="components/loader.css">
+    <link rel="stylesheet" href="lib/onsenui/css/onsenui.css">
+    <link rel="stylesheet" href="lib/onsenui/css/onsen-css-components.css">
+    <link rel="stylesheet" href="css/style.css">
+
+    <script>
+        function func(data, dataType) {
+            results = data.responses[0].textAnnotations;
+            //console.log(results[0].description.split(/\b/));
+            document.getElementById("base64area").innerHTML = "";
+            results[0].description.split(/\b/).forEach(function(val, idx) {
+                document.getElementById("base64area").innerHTML += "<span onclick='wordClick(this)'>" + val + "</span> ";  
+            });
+            //document.getElementById("base64area").innerHTML = results[0].description;
+            /*for (var i = 0; i < results.length; i++) {
+                document.getElementById("base64area").innerHTML += results[i].description
+            }*/
+        }
+        
+        function errFunc(XMLHttpRequest, textStatus, errorThrown) {
+            console.log('Error : ' + errorThrown);
+        }
+        
+        function wordClick(obj) {
+            console.log(obj.innerHTML);
+            getList(obj.innerHTML);
+        }
+        
+        function file_uploaded(evt) {
+            var files = evt.target.files;
+            document.getElementById("base64area").innerHTML = "認識中";
+            for (var i = 0, f; f = files[i]; i++) {
+                console.log(f.name);
+                console.log(f);
+                
+                //ここから画像データ送信
+                // url設定
+                var api_key = '[APIキー]';
+                var url = 'https://vision.googleapis.com/v1/images:annotate' + '?key=' + api_key;
+                
+                //データをセット&送信
+                var fr=new FileReader();
+                fr.onload=function(evt) {
+                    var base64Data = evt.target.result.split(',')[1];
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        contentType:'application/json',
+                        data: JSON.stringify({requests: [{image: {content: base64Data}, features: {type: "TEXT_DETECTION", maxResults: 1}}]}), 
+                        dataType: 'json',
+                        success: func,
+                        error: errFunc
+                    });
+		        }
+                fr.readAsDataURL(f);
+            }
+        }
+        
+        function getList(_txt){
+            nowdic = "EJdict";
+            var reqPath = "http://public.dejizo.jp/NetDicV09.asmx/SearchDicItemLite?Dic="+nowdic+"&Word="+encodeURI(_txt)+"&Scope=HEADWORD&Match=EXACT&Merge=AND&Prof=XHTML&PageSize=20&PageIndex=0";
+            console.log(reqPath);
+            $.ajax({
+                type: "get",
+                url: reqPath,
+                dataType: 'xml',
+                cache: false,
+                timeout: 5000,
+                success: function(xml) {
+                    console.log(xml);
+                    $(xml).find("DicItemTitle").each(function() {
+                        console.log($(this).find("ItemID").text());
+                        getWord($(this).find("ItemID").text());
+                    });
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown){
+                    alert('error');
+                }
+            });
+        }
+        
+        function getWord(_id){
+            var reqPath = "http://public.dejizo.jp/NetDicV09.asmx/GetDicItemLite?Dic="+nowdic+"&Item="+_id+"&Loc=&Prof=XHTML";
+            console.log(reqPath);
+            $.ajax({
+                type: "get",
+                url: reqPath,
+                dataType: 'xml',
+                cache: false,
+                timeout: 5000,
+                success: function(xml) {
+                    console.log(xml);
+                    var htmlstr = '';
+                    var data = $(xml).find("Body").get(0);
+                    var serializer = new XMLSerializer(); 
+                    htmlstr += serializer.serializeToString(data);
+                    console.log(htmlstr);
+                    $('#word').html(htmlstr);
+                },
+                error: function(XMLHttpRequest, textStatus, errorThrown){
+                    alert('error');
+                }
+            });
+}
+        
+        ons.ready(function() {
+            console.log("Onsen UI is ready!");
+            document.getElementById('file').addEventListener('change', file_uploaded, false);
+        });
+    </script>
+</head>
+<body>
+    Test<br>
+    
+    <input id="file" type="file" name="capture" accept="image/*" capture="camera" />
+    <div id="base64area" style="width:100%; height:50%;">認識結果</div>
+    <div id="word" style="width:100%;">単語意味</div>
+</body>
+</html>
