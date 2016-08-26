@@ -2,6 +2,8 @@
 
 ## 概要
 
+![サムネイル](https://raw.githubusercontent.com/mechamogera/monaca-ocr-ejdic/master/image.png)
+
 英論文を読む時に英単語を認識して単語帳にしてくれるなにか
 をやっつけで作ってみた。
 
